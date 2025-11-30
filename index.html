@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BreathQuest – Mobile Breathing Game</title>
+  <style>
+    :root {
+      --bg1: #020617;
+      --bg2: #0b1120;
+      --accent: #38bdf8;
+      --accent-2: #a855f7;
+      --accent-soft: #0ea5e9;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 55%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      color: #f9fafb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 24px;
+      background: linear-gradient(145deg, rgba(15,23,42,0.95), rgba(15,23,42,0.85));
+      border: 1px solid rgba(148,163,184,0.4);
+      box-shadow:
+        0 18px 55px rgba(15,23,42,0.9),
+        0 0 0 1px rgba(15,23,42,0.7);
+      padding: 14px 14px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* soft glow background orbs */
+    .orb {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(50px);
+      opacity: 0.7;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .orb.o1 {
+      width: 260px; height: 260px;
+      background: #22d3ee;
+      top: -80px; left: -40px;
+      animation: float1 16s infinite alternate ease-in-out;
+    }
+    .orb.o2 {
+      width: 280px; height: 280px;
+      background: #6366f1;
+      bottom: -100px; right: -80px;
+      animation: float2 22s infinite alternate ease-in-out;
+    }
+    @keyframes float1 {
+      0% {transform: translate3d(0,0,0) scale(1);}
+      100% {transform: translate3d(30px,40px,0) scale(1.1);}
+    }
+    @keyframes float2 {
+      0% {transform: translate3d(0,0,0) scale(1.05);}
+      100% {transform: translate3d(-40px,-20px,0) scale(0.95);}
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .title-block {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .logo-pill {
+      width: 40px;
+      height: 40px;
+      border-radius: 16px;
+      background: radial-gradient(circle at 30% 30%, #e0f2fe, #38bdf8 40%, #0b1120 80%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 0 1px rgba(15,23,42,0.8);
+    }
+
+    h1 {
+      font-size: 1.3rem;
+      margin: 0;
+      letter-spacing: 0.04em;
+    }
+
+    .tagline {
+      margin: 0;
+      margin-top: 2px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .score {
+      text-align: right;
+      font-size: 0.8rem;
+    }
+
+    .score span {
+      display: block;
+    }
+
+    .score-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    /* mode tabs */
+    .modes {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      margin-top: 4px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      font-size: 0.72rem;
+      text-align: center;
+      padding: 6px 4px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.9);
+      color: #e5e7eb;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #020617;
+      border-color: transparent;
+      box-shadow: 0 8px 25px rgba(8,47,73,0.8);
+      font-weight: 600;
+    }
+
+    /* game area */
+    .game-area {
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,0.5);
+      background: radial-gradient(circle at top, rgba(15,23,42,0.9), rgba(15,23,42,0.8));
+      padding: 12px;
+      margin-bottom: 10px;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .mode-view {
+      display: none;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-evenly;
+    }
+
+    .mode-view.active {
+      display: flex;
+    }
+
+    .instruction {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 0 4px;
+    }
+
+    /* DOT HOLD MODE (Mode 1) */
+    .dots-area {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+      height: 180px;
+      border-radius: 16px;
+      border: 1px dashed rgba(148,163,184,0.8);
+      background: radial-gradient(circle at top, #020617, #020617f2);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    .dot {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #e0f2fe, #38bdf8);
+      opacity: 0;
+      animation: dotFade 8s forwards;
+    }
+
+    @keyframes dotFade {
+      0% {opacity: 1; transform: scale(1);}
+      80% {opacity: 1; transform: scale(1.1);}
+      100% {opacity: 0; transform: scale(0.4);}
+    }
+
+    .hold-label {
+      position: absolute;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 0 10px;
+      pointer-events: none;
+    }
+
+    .countdown {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+
+    /* BREATH BALL MODE (Mode 2) */
+    .ball-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .ball {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 20%, #e0f2fe, transparent 40%),
+        radial-gradient(circle at 70% 80%, #bae6fd, transparent 50%),
+        radial-gradient(circle at 50% 50%, #38bdf8, #0ea5e9 60%, #020617 100%);
+      box-shadow:
+        0 0 30px rgba(56,189,248,0.9),
+        0 0 0 1px rgba(15,23,42,0.9);
+      transition: transform 3s ease-in-out, box-shadow 3s ease-in-out;
+    }
+
+    .ball.inhale {
+      transform: scale(1.2);
+      box-shadow:
+        0 0 45px rgba(56,189,248,1),
+        0 0 0 2px rgba(56,189,248,0.8);
+    }
+
+    .ball.exhale {
+      transform: scale(0.9);
+      box-shadow:
+        0 0 25px rgba(56,189,248,0.9),
+        0 0 0 1px rgba(15,23,42,0.9);
+    }
+
+    .phase-text {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* BOX BREATH MODE (Mode 3) */
+    .box-area {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,0.8);
+      background: radial-gradient(circle at top, #020617, #020617f2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .box-path {
+      width: 130px;
+      height: 130px;
+      border-radius: 16px;
+      border: 1px dashed rgba(148,163,184,0.7);
+      position: relative;
+    }
+
+    .box-dot {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #fecaca, #fb7185);
+      box-shadow: 0 0 20px rgba(248,113,113,0.9);
+      transition: transform 1s linear;
+    }
+
+    .box-phase-label {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* controls */
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn-main {
+      flex: 1.3;
+      border-radius: 999px;
+      padding: 8px;
+      border: none;
+      font-size: 0.9rem;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #020617;
+      font-weight: 600;
+      box-shadow:
+        0 10px 30px rgba(8,47,73,0.8),
+        0 0 0 1px rgba(8,47,73,0.7);
+      cursor: pointer;
+    }
+    .btn-secondary {
+      flex: 1;
+      border-radius: 999px;
+      padding: 8px;
+      border: 1px solid rgba(148,163,184,0.7);
+      background: rgba(15,23,42,0.96);
+      color: #e5e7eb;
+      font-size: 0.86rem;
+      cursor: pointer;
+    }
+    .btn-main:active,
+    .btn-secondary:active {
+      transform: translateY(1px);
+      box-shadow: none;
+      opacity: 0.92;
+    }
+
+    .footer-note {
+      margin-top: 4px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="orb o1"></div>
+    <div class="orb o2"></div>
+
+    <div class="content">
+      <div class="header">
+        <div class="title-block">
+          <div class="logo-pill">😮‍💨</div>
+          <div>
+            <h1>BreathQuest</h1>
+            <p class="tagline">1-Player mobile breathing game with 3 modes.</p>
+          </div>
+        </div>
+        <div class="score">
+          <span>Score</span>
+          <span class="score-value" id="score">0</span>
+        </div>
+      </div>
+
+      <div class="modes">
+        <button class="mode-btn active" data-mode="dots">Dot Hold</button>
+        <button class="mode-btn" data-mode="ball">Breathing Ball</button>
+        <button class="mode-btn" data-mode="box">Box Breath</button>
+      </div>
+
+      <div class="game-area">
+        <!-- MODE 1: DOT HOLD -->
+        <div class="mode-view active" id="mode-dots">
+          <p class="instruction">
+            Inhale, then <strong>hold your breath</strong> and press-and-hold inside the box
+            until <strong>all the dots fade away</strong> (about 8 seconds).
+          </p>
+          <div class="dots-area" id="dots-area">
+            <div class="hold-label" id="dots-hold-label">
+              Press and hold here while the dots disappear
+            </div>
+          </div>
+          <div class="countdown" id="dots-countdown">Ready</div>
+        </div>
+
+        <!-- MODE 2: BREATHING BALL -->
+        <div class="mode-view" id="mode-ball">
+          <p class="instruction">
+            Follow the ball. It expands to guide your <strong>inhale</strong> and compresses to guide your
+            <strong>exhale</strong>. Complete cycles to earn points.
+          </p>
+          <div class="ball-wrapper">
+            <div class="ball" id="breath-ball"></div>
+            <div class="phase-text" id="ball-phase">Tap Start to begin.</div>
+          </div>
+        </div>
+
+        <!-- MODE 3: BOX BREATH -->
+        <div class="mode-view" id="mode-box">
+          <p class="instruction">
+            Box breathing: <strong>Inhale 4s</strong>, <strong>Hold 4s</strong>, <strong>Exhale 4s</strong>, <strong>Hold 4s</strong>.
+            Follow the glowing dot around the square. Each full box gives points.
+          </p>
+          <div class="box-area">
+            <div class="box-path" id="box-path">
+              <div class="box-dot" id="box-dot"></div>
+            </div>
+          </div>
+          <div class="box-phase-label" id="box-phase-label">Tap Start to begin.</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn-main" id="btn-start">Start</button>
+        <button class="btn-secondary" id="btn-reset">Reset</button>
+      </div>
+
+      <p class="footer-note">
+        This game doesn’t detect actual breathing; use it as a guide and stop if you feel dizzy.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // GLOBAL STATE
+    let currentMode = "dots";
+    let score = 0;
+    let sessionActive = false;
+
+    let activeTimers = [];
+    function addTimer(id) { activeTimers.push(id); }
+    function clearAllTimers() {
+      activeTimers.forEach(clearTimeout);
+      activeTimers = [];
+    }
+
+    const scoreEl = document.getElementById("score");
+    function addScore(points) {
+      score += points;
+      scoreEl.textContent = score;
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll(".mode-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+      document.querySelectorAll(".mode-view").forEach(view => {
+        view.classList.remove("active");
+      });
+      document.getElementById("mode-" + mode).classList.add("active");
+      stopSession();
+    }
+
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => setMode(btn.dataset.mode));
+    });
+
+    const startBtn = document.getElementById("btn-start");
+    const resetBtn = document.getElementById("btn-reset");
+
+    startBtn.addEventListener("click", () => {
+      stopSession();
+      sessionActive = true;
+      if (currentMode === "dots") startDotsMode();
+      else if (currentMode === "ball") startBallMode();
+      else if (currentMode === "box") startBoxMode();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      stopSession();
+      score = 0;
+      scoreEl.textContent = "0";
+    });
+
+    function stopSession() {
+      sessionActive = false;
+      clearAllTimers();
+      // reset visuals
+      resetDotsMode();
+      resetBallMode();
+      resetBoxMode();
+    }
+
+    /* MODE 1: DOT HOLD (8s) */
+    const dotsArea = document.getElementById("dots-area");
+    const dotsCountdown = document.getElementById("dots-countdown");
+    const dotsHoldLabel = document.getElementById("dots-hold-label");
+
+    let holding = false;
+    let brokeHold = false;
+
+    function resetDotsMode() {
+      dotsArea.innerHTML = "";
+      dotsArea.appendChild(dotsHoldLabel);
+      dotsCountdown.textContent = "Ready";
+      dotsHoldLabel.textContent = "Press and hold here while the dots disappear";
+      holding = false;
+      brokeHold = false;
+    }
+
+    function setupHoldListeners() {
+      const startHold = (e) => {
+        e.preventDefault();
+        holding = true;
+        brokeHold = false;
+      };
+      const endHold = (e) => {
+        e.preventDefault();
+        if (holding) {
+          brokeHold = true;
+        }
+        holding = false;
+      };
+      // touch
+      dotsArea.addEventListener("touchstart", startHold);
+      dotsArea.addEventListener("touchend", endHold);
+      dotsArea.addEventListener("touchcancel", endHold);
+      // mouse (fallback for desktop)
+      dotsArea.addEventListener("mousedown", startHold);
+      ["mouseup", "mouseleave"].forEach(ev => dotsArea.addEventListener(ev, endHold));
+    }
+    setupHoldListeners();
+
+    function spawnDots() {
+      dotsArea.innerHTML = "";
+      dotsArea.appendChild(dotsHoldLabel);
+      const count = 18;
+      const rect = dotsArea.getBoundingClientRect();
+      for (let i = 0; i < count; i++) {
+        const d = document.createElement("div");
+        d.className = "dot";
+        const x = Math.random() * (rect.width - 20) + 4;
+        const y = Math.random() * (rect.height - 20) + 4;
+        d.style.left = x + "px";
+        d.style.top = y + "px";
+        dotsArea.appendChild(d);
+      }
+    }
+
+    function startDotsMode() {
+      dotsCountdown.textContent = "Get ready… tap and hold when dots appear.";
+      dotsHoldLabel.textContent = "Press and hold until dots vanish";
+      spawnDots();
+      holding = false;
+      brokeHold = false;
+
+      let secondsLeft = 8;
+      dotsCountdown.textContent = secondsLeft + "s";
+
+      const tick = () => {
+        if (!sessionActive || currentMode !== "dots") return;
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          dotsCountdown.textContent = secondsLeft + "s";
+          const id = setTimeout(tick, 1000);
+          addTimer(id);
+        } else {
+          dotsCountdown.textContent = "0s";
+        }
+      };
+      const id0 = setTimeout(tick, 1000);
+      addTimer(id0);
+
+      const finishId = setTimeout(() => {
+        if (!sessionActive || currentMode !== "dots") return;
+        // Check hold
+        if (!brokeHold && holding) {
+          dotsCountdown.textContent = "Great hold! +50";
+          addScore(50);
+        } else {
+          dotsCountdown.textContent = "You let go early. Try again.";
+        }
+        sessionActive = false;
+      }, 8000);
+      addTimer(finishId);
+    }
+
+    /* MODE 2: BREATHING BALL */
+    const breathBall = document.getElementById("breath-ball");
+    const ballPhase = document.getElementById("ball-phase");
+
+    function resetBallMode() {
+      breathBall.classList.remove("inhale", "exhale");
+      ballPhase.textContent = "Tap Start to begin.";
+    }
+
+    function startBallMode() {
+      let isInhale = true;
+      let cycles = 0;
+      const maxCycles = 6; // complete 6 inhale/exhale cycles
+
+      function step() {
+        if (!sessionActive || currentMode !== "ball") {
+          resetBallMode();
+          return;
+        }
+        if (isInhale) {
+          breathBall.classList.add("inhale");
+          breathBall.classList.remove("exhale");
+          ballPhase.textContent = "Inhale slowly…";
+          const id = setTimeout(() => {
+            isInhale = false;
+            step();
+          }, 4000); // 4s inhale
+          addTimer(id);
+        } else {
+          breathBall.classList.add("exhale");
+          breathBall.classList.remove("inhale");
+          ballPhase.textContent = "Exhale gently…";
+          const id = setTimeout(() => {
+            isInhale = true;
+            cycles++;
+            addScore(10); // +10 per full cycle
+            if (cycles < maxCycles) {
+              step();
+            } else {
+              ballPhase.textContent = "Nice work! +60 points total from this round.";
+              sessionActive = false;
+              breathBall.classList.remove("inhale", "exhale");
+            }
+          }, 6000); // 6s exhale
+          addTimer(id);
+        }
+      }
+      step();
+    }
+
+    /* MODE 3: BOX BREATH (4-4-4-4) */
+    const boxDot = document.getElementById("box-dot");
+    const boxPhaseLabel = document.getElementById("box-phase-label");
+    const boxPath = document.getElementById("box-path");
+
+    function resetBoxMode() {
+      boxDot.style.transform = "translate(0, 0)";
+      boxPhaseLabel.textContent = "Tap Start to begin.";
+    }
+
+    function startBoxMode() {
+      const totalSegments = 4; // inhale, hold, exhale, hold
+      const segmentDuration = 4000; // 4 seconds each
+      let segmentIndex = 0;
+      let completedBoxes = 0;
+      const maxBoxes = 4; // number of full boxes
+
+      const w = 130, h = 130;
+      const offset = 10;
+      const top = offset;
+      const left = offset;
+      const right = w - offset - 18;
+      const bottom = h - offset - 18;
+
+      function updateDotPosition(seg) {
+        // 0 inhale (left -> right along top)
+        // 1 hold (right top -> right bottom)
+        // 2 exhale (right bottom -> left bottom)
+        // 3 hold (left bottom -> left top)
+        let x = left, y = top;
+        if (seg === 0) { x = right; y = top; }
+        else if (seg === 1) { x = right; y = bottom; }
+        else if (seg === 2) { x = left; y = bottom; }
+        else if (seg === 3) { x = left; y = top; }
+        boxDot.style.transform = `translate(${x}px, ${y}px)`;
+      }
+
+      function segmentName(seg) {
+        if (seg === 0) return "Inhale (4s)";
+        if (seg === 1) return "Hold (4s)";
+        if (seg === 2) return "Exhale (4s)";
+        return "Hold (4s)";
+      }
+
+      function step() {
+        if (!sessionActive || currentMode !== "box") {
+          resetBoxMode();
+          return;
+        }
+        boxPhaseLabel.textContent = "Box " + (completedBoxes + 1) + " – " + segmentName(segmentIndex);
+        updateDotPosition(segmentIndex);
+
+        const id = setTimeout(() => {
+          segmentIndex++;
+          if (segmentIndex >= totalSegments) {
+            segmentIndex = 0;
+            completedBoxes++;
+            addScore(15); // each full box is +15
+          }
+          if (completedBoxes < maxBoxes) {
+            step();
+          } else {
+            boxPhaseLabel.textContent = "Calm complete. +60 points this round.";
+            sessionActive = false;
+          }
+        }, segmentDuration);
+        addTimer(id);
+      }
+
+      // start at top-left
+      boxDot.style.transform = `translate(${left}px, ${top}px)`;
+      step();
+    }
+  </script>
+</body>
+</html>
